@@ -77,13 +77,13 @@ const Footer = () => {
       <div className={classes.contact}>
         <Button
           type="link"
-          href="https://www.instagram.com/cryptoelephantsclub/"
+          href="https://www.instagram.com/cryptoelephants_junior/"
           icon={<InstagramOutlined />}
           target="_blank"
         />
         <Button
           type="link"
-          href="https://twitter.com/cryptoelephantsclub"
+          href="https://twitter.com/srujan62815048"
           icon={<TwitterOutlined />}
           target="_blank"
         />
