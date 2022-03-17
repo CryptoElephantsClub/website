@@ -77,25 +77,25 @@ const Footer = () => {
       <div className={classes.contact}>
         <Button
           type="link"
-          href="https://www.instagram.com/walkinwallet/"
+          href="https://www.instagram.com/cryptoelephantsclub/"
           icon={<InstagramOutlined />}
           target="_blank"
         />
         <Button
           type="link"
-          href="https://twitter.com/walkinwallet"
+          href="https://twitter.com/cryptoelephantsclub"
           icon={<TwitterOutlined />}
           target="_blank"
         />
         <Button
           type="link"
-          href="https://discord.gg/zRUB42UPmB"
+          href="https://discord.gg/JaSJRs9Hze"
           icon={<DiscordIcon />}
           target="_blank"
         />
         <Button
           type="link"
-          href="mailto:contact@walkinwallet.com"
+          href="mailto:contact@cryptoelephants.club"
           icon={<MailOutlined />}
           target="_blank"
         />
