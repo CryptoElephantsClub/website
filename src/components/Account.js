@@ -30,18 +30,18 @@ const Account = () => {
             if (typeof window.ethereum !== "undefined") {
               await authenticate({
                 signingMessage:
-                  'Welcome to WalkInWallet! This a client webapp which does not store any of your data online. The only database entry we will create is about the sharing options of your gallery which can be "accessable via link", "public", or "private" (default). We wish you a lot of fun while walking!',
+                  "Welcome to the CryptoElephantsClub! The backend will not store any personal data. We only store the elephants used for the junior requests and your wallet address as long as the request is pending. The address will be removed automatically as soon as the request is fulfilled.",
               });
             } else {
               await authenticate({
                 provider: "walletconnect",
                 signingMessage:
-                  'Welcome to WalkInWallet! This a client webapp which does not store any of your data online. The only database entry we will create is about the sharing options of your gallery which can be "accessable via link", "public", or "private" (default). We wish you a lot of fun while walking!',
+                  "Welcome to the CryptoElephantsClub! The backend will not store any personal data. We only store the elephants used for the junior requests and your wallet address as long as the request is pending. The address will be removed automatically as soon as the request is fulfilled.",
               });
             }
           } catch (error) {
             message.warn(
-              "The login is currently not available. Please check the login on another device, try it again later or/and send a mail to contact@walkinwallet.com."
+              "The login is currently not available. Please check the login on another device, try it again later or/and send a mail to contact@cryptoelephants.club."
             );
           }
         }}
