@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useMoralis } from "react-moralis";
 import "./App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Juniors, Welcome, Claim } from "./pages";
+import { Juniors, Welcome, Claim, Admin } from "./pages";
 import { createUseStyles } from "react-jss";
 import Account from "./components/Account";
 import Footer from "./components/Footer";
@@ -123,6 +123,7 @@ const App = () => {
             <Route path="/" element={<Welcome />} />
             <Route path="/juniors" element={<Juniors />} />
             <Route path="/claim" element={<Claim />} />
+            <Route path="/admin" element={<Admin />} />
           </Routes>
         </div>
         <Footer />
