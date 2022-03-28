@@ -60,6 +60,7 @@ const Claim = () => {
   const [finishedFetching, setFinishedFetching] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [requestRunning, setRequestRunning] = useState(false);
+  const [fetchBlocked, setFetchBlocked] = useState(false);
   const classes = useStyles();
 
   const fetchPendingRequests = useCallback(async () => {
@@ -100,6 +101,7 @@ const Claim = () => {
   useEffect(() => {
     if (isAuthenticated && !requestDone) {
       const fetchNFTs = async () => {
+        setFetchBlocked(true);
         const options = {
           chain: "matic",
           address: user.attributes.ethAddress,
@@ -130,9 +132,13 @@ const Claim = () => {
         fetchPendingRequests();
         setRequestDone(true);
       };
-      fetchNFTs();
+
+      if (!fetchBlocked) {
+        fetchNFTs();
+      }
     }
   }, [
+    fetchBlocked,
     isAuthenticated,
     Web3API,
     user,

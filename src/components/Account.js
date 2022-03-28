@@ -58,7 +58,7 @@ const Account = () => {
 
   const menu = (
     <Menu>
-      <Menu.Item onClick={logout}>
+      <Menu.Item onClick={logout} key={0}>
         {`Logout ${getEllipsisTxt(user.attributes.ethAddress)}`}
       </Menu.Item>
     </Menu>

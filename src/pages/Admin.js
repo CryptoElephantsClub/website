@@ -27,13 +27,11 @@ const Admin = () => {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [requestRunning, setRequestRunning] = useState(false);
   const [requestDone, setRequestDone] = useState(false);
+  const [runningRequests, setRunningRequests] = useState([]);
   const classes = useStyles();
 
   const whitelist = useMemo(
-    () => [
-      "0x7ab51dfe5d2efbd7d01237a84f153fd578563e4f",
-      "0xe69fa60dd3c64537a4adc6ec44cdb3fc09c0140c",
-    ],
+    () => ["0x7ab51dfe5d2efbd7d01237a84f153fd578563e4f"],
     []
   );
 
@@ -113,7 +111,7 @@ const Admin = () => {
       render: (parents) => (
         <>
           {parents.map((parent) => (
-            <Tag color="geekblue" key={parent}>
+            <Tag key={`parent-${parent}`} color="geekblue">
               {parent}
             </Tag>
           ))}
@@ -128,7 +126,11 @@ const Admin = () => {
         if (typeof juniors === "number") {
           return juniors;
         } else {
-          return juniors.map((junior) => <Tag color="green">{junior.id}</Tag>);
+          return juniors.map((junior) => (
+            <Tag key={`junior-${junior.id}`} color="green">
+              {junior.id}
+            </Tag>
+          ));
         }
       },
     },
@@ -136,9 +138,13 @@ const Admin = () => {
       title: "State",
       dataIndex: "state",
       key: "state",
-      render: (state) => {
+      render: (state, record) => {
         if (state) {
-          return <Tag color={state.color}>{state.text}</Tag>;
+          return (
+            <Tag key={`state-${record.id}`} color={state.color}>
+              {state.text}
+            </Tag>
+          );
         }
       },
     },
@@ -149,41 +155,66 @@ const Admin = () => {
         if (typeof record.juniors === "number") {
           return (
             <Button
+              key={`button-${record.id}`}
+              disabled={runningRequests.includes(record.id)}
+              loading={runningRequests.includes(record.id)}
               onClick={async () => {
-                const response = await axios.post(
-                  "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/assign/juniors",
-                  {
-                    juniorRequest: record.id,
-                  },
-                  {
-                    headers: {
-                      "x-user-message": encodeURI(
-                        user.attributes.authData.moralisEth.data
-                      ),
-                      "x-user-signature": encodeURI(
-                        user.attributes.authData.moralisEth.signature
-                      ),
+                setRunningRequests([...runningRequests, record.id]);
+                try {
+                  const response = await axios.post(
+                    "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/assign/juniors",
+                    {
+                      juniorRequest: record.id,
                     },
-                  }
-                );
+                    {
+                      headers: {
+                        "x-user-message": encodeURI(
+                          user.attributes.authData.moralisEth.data
+                        ),
+                        "x-user-signature": encodeURI(
+                          user.attributes.authData.moralisEth.signature
+                        ),
+                      },
+                    }
+                  );
 
-                setPendingRequests([
-                  ...pendingRequests.filter(
-                    (pendingRequest) => pendingRequest.id !== record.id
-                  ),
-                  response.data,
-                ]);
+                  setPendingRequests([
+                    ...pendingRequests.filter(
+                      (pendingRequest) => pendingRequest.id !== record.id
+                    ),
+                    response.data,
+                  ]);
+                } catch (error) {
+                  message.warn(error);
+                } finally {
+                  setRunningRequests(
+                    runningRequests.filter(
+                      (runningRequest) => runningRequest !== record.id
+                    )
+                  );
+                }
               }}
             >
-              Send Juniors
+              {runningRequests.includes(record.id) ? "" : "Send Juniors"}
             </Button>
           );
         } else {
           return (
-            <div className={classes.buttons}>
+            <div className={classes.buttons} key={`button-${record.id}`}>
               {record.juniors.map((junior) => (
                 <Button
+                  key={record.id + junior.token_id}
+                  disabled={runningRequests.includes(
+                    record.id + junior.token_id
+                  )}
+                  loading={runningRequests.includes(
+                    record.id + junior.token_id
+                  )}
                   onClick={async () => {
+                    setRunningRequests([
+                      ...runningRequests,
+                      record.id + junior.token_id,
+                    ]);
                     const options = {
                       type: "erc721",
                       receiver: record.wallet,
@@ -196,17 +227,68 @@ const Admin = () => {
                     try {
                       const transaction = await Moralis.transfer(options);
                       const result = await transaction.wait();
+
                       console.log(result);
+
+                      await axios.post(
+                        "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/finished/transaction",
+                        {
+                          juniorRequest: record.id,
+                          juniorId: junior.token_id,
+                        },
+                        {
+                          headers: {
+                            "x-user-message": encodeURI(
+                              user.attributes.authData.moralisEth.data
+                            ),
+                            "x-user-signature": encodeURI(
+                              user.attributes.authData.moralisEth.signature
+                            ),
+                          },
+                        }
+                      );
                     } catch (error) {
                       if (error.code === -32603) {
                         message.info(
                           "You are not the owner of this token. This usally means that an earlier request finished in the background."
                         );
+
+                        await axios.post(
+                          "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/finished/transaction",
+                          {
+                            juniorRequest: record.id,
+                            juniorId: junior.token_id,
+                          },
+                          {
+                            headers: {
+                              "x-user-message": encodeURI(
+                                user.attributes.authData.moralisEth.data
+                              ),
+                              "x-user-signature": encodeURI(
+                                user.attributes.authData.moralisEth.signature
+                              ),
+                            },
+                          }
+                        );
+                      } else {
+                        message.warn(error.message);
+                        message.info(
+                          "A failed transaction may only failed because it needs more time. Just wait a litte bit longer and/or try again later."
+                        );
                       }
+                    } finally {
+                      setRunningRequests(
+                        runningRequests.filter(
+                          (runningRequest) =>
+                            runningRequest !== record.id + junior.token_id
+                        )
+                      );
                     }
                   }}
                 >
-                  {`Send ${junior.id}`}
+                  {runningRequests.includes(record.id + junior.token_id)
+                    ? ""
+                    : `Send ${junior.id}`}
                 </Button>
               ))}
             </div>

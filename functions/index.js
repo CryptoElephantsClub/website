@@ -70,6 +70,12 @@ app.get("/used/parents", async (req, res) => {
   res.json(snapshot.docs.map((doc) => doc.id));
 });
 
+app.get("/check/parent/:elephantId", async (req, res) => {
+  const snapshot = await db.collection("parents").get();
+  const usedElephants = snapshot.docs.map((doc) => doc.id);
+  return res.send(usedElephants.includes("#" + req.params.elephantId));
+});
+
 app.get("/pending/requests", async (req, res) => {
   if (!req.wallet) {
     return res.status(403).end();
@@ -131,6 +137,31 @@ app.post("/assign/juniors", async (req, res) => {
       ...juniorRequest,
       juniors: selectedJuniors,
     });
+  }
+});
+
+app.post("/finished/transaction", async (req, res) => {
+  if (!req.wallet || !whitelist.includes(req.wallet.toLowerCase())) {
+    return res.status(403).end();
+  } else {
+    const juniorId = req.body.juniorId;
+
+    const juniorRequest = await db
+      .collection("junior-requests")
+      .doc(req.body.juniorRequest)
+      .get();
+    let finishedParts = juniorRequest.finished || [];
+    finishedParts = [...new Set([...finishedParts, juniorId])];
+
+    await db
+      .collection("juniorRequests")
+      .doc(req.body.juniorRequest)
+      .update({
+        finished: finishedParts,
+        fulfilled: finishedParts.length === juniorRequest.juniors.length,
+      });
+
+    return res.status(200).end();
   }
 });
 
