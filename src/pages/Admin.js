@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
-import { Alert, message, Tag, Table, Spin, Button } from "antd";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Alert, message, Tag, Table, Spin, Button, Breadcrumb } from "antd";
 import { useMoralis } from "react-moralis";
 import axios from "axios";
 import { createUseStyles } from "react-jss";
+import { CheckOutlined, HomeOutlined } from "@ant-design/icons";
 
 const useStyles = createUseStyles({
   requests: {
@@ -30,6 +31,11 @@ const Admin = () => {
   const [runningRequests, setRunningRequests] = useState([]);
   const classes = useStyles();
 
+  const updatePendingRequests = useCallback((requests) => {
+    requests.sort((a, b) => new Date(a.date) - new Date(b.date));
+    setPendingRequests(requests);
+  }, []);
+
   const whitelist = useMemo(
     () => ["0x7ab51dfe5d2efbd7d01237a84f153fd578563e4f"],
     []
@@ -52,7 +58,7 @@ const Admin = () => {
             },
           }
         );
-        setPendingRequests(response.data);
+        updatePendingRequests(response.data);
       } catch (error) {
         console.warn(error);
         message.warn(
@@ -71,7 +77,7 @@ const Admin = () => {
     ) {
       fetchPendingRequests();
     }
-  }, [user, requestDone, isAuthenticated, whitelist]);
+  }, [user, requestDone, isAuthenticated, whitelist, updatePendingRequests]);
 
   if (
     !isAuthenticated ||
@@ -178,7 +184,7 @@ const Admin = () => {
                     }
                   );
 
-                  setPendingRequests([
+                  updatePendingRequests([
                     ...pendingRequests.filter(
                       (pendingRequest) => pendingRequest.id !== record.id
                     ),
@@ -201,59 +207,50 @@ const Admin = () => {
         } else {
           return (
             <div className={classes.buttons} key={`button-${record.id}`}>
-              {record.juniors.map((junior) => (
-                <Button
-                  key={record.id + junior.token_id}
-                  disabled={runningRequests.includes(
-                    record.id + junior.token_id
-                  )}
-                  loading={runningRequests.includes(
-                    record.id + junior.token_id
-                  )}
-                  onClick={async () => {
-                    setRunningRequests([
-                      ...runningRequests,
-                      record.id + junior.token_id,
-                    ]);
-                    const options = {
-                      type: "erc721",
-                      receiver: record.wallet,
-                      contractAddress: junior.token_address,
-                      tokenId: Number(junior.token_id),
-                    };
-                    console.log("Start transaction");
-                    console.log(options);
+              {record.juniors.map((junior) => {
+                const finishedRequests = record.finished || [];
+                if (finishedRequests.includes(junior.token_id)) {
+                  return (
+                    <Button
+                      key={`junior-claim-button-${junior.token_id}`}
+                      icon={<CheckOutlined />}
+                      disabled={true}
+                    >
+                      {junior.id}
+                    </Button>
+                  );
+                }
 
-                    try {
-                      const transaction = await Moralis.transfer(options);
-                      const result = await transaction.wait();
+                return (
+                  <Button
+                    key={record.id + junior.token_id}
+                    disabled={runningRequests.includes(
+                      record.id + junior.token_id
+                    )}
+                    loading={runningRequests.includes(
+                      record.id + junior.token_id
+                    )}
+                    onClick={async () => {
+                      setRunningRequests([
+                        ...runningRequests,
+                        record.id + junior.token_id,
+                      ]);
+                      const options = {
+                        type: "erc721",
+                        receiver: record.wallet,
+                        contractAddress: junior.token_address,
+                        tokenId: Number(junior.token_id),
+                      };
+                      console.log("Start transaction");
+                      console.log(options);
 
-                      console.log(result);
+                      try {
+                        const transaction = await Moralis.transfer(options);
+                        const result = await transaction.wait();
 
-                      await axios.post(
-                        "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/finished/transaction",
-                        {
-                          juniorRequest: record.id,
-                          juniorId: junior.token_id,
-                        },
-                        {
-                          headers: {
-                            "x-user-message": encodeURI(
-                              user.attributes.authData.moralisEth.data
-                            ),
-                            "x-user-signature": encodeURI(
-                              user.attributes.authData.moralisEth.signature
-                            ),
-                          },
-                        }
-                      );
-                    } catch (error) {
-                      if (error.code === -32603) {
-                        message.info(
-                          "You are not the owner of this token. This usally means that an earlier request finished in the background."
-                        );
+                        console.log(result);
 
-                        await axios.post(
+                        const response = await axios.post(
                           "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/finished/transaction",
                           {
                             juniorRequest: record.id,
@@ -270,27 +267,66 @@ const Admin = () => {
                             },
                           }
                         );
-                      } else {
-                        message.warn(error.message);
-                        message.info(
-                          "A failed transaction may only failed because it needs more time. Just wait a litte bit longer and/or try again later."
+
+                        updatePendingRequests([
+                          ...pendingRequests.filter(
+                            (pendingRequest) => pendingRequest.id !== record.id
+                          ),
+                          response.data,
+                        ]);
+                      } catch (error) {
+                        if (error.code === -32603) {
+                          message.info(
+                            "You are not the owner of this token. This usally means that an earlier request finished in the background."
+                          );
+
+                          const response = await axios.post(
+                            "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/finished/transaction",
+                            {
+                              juniorRequest: record.id,
+                              juniorId: junior.token_id,
+                            },
+                            {
+                              headers: {
+                                "x-user-message": encodeURI(
+                                  user.attributes.authData.moralisEth.data
+                                ),
+                                "x-user-signature": encodeURI(
+                                  user.attributes.authData.moralisEth.signature
+                                ),
+                              },
+                            }
+                          );
+
+                          updatePendingRequests([
+                            ...pendingRequests.filter(
+                              (pendingRequest) =>
+                                pendingRequest.id !== record.id
+                            ),
+                            response.data,
+                          ]);
+                        } else {
+                          message.warn(error.message);
+                          message.info(
+                            "A failed transaction may only failed because it needs more time. Just wait a litte bit longer and/or try again later."
+                          );
+                        }
+                      } finally {
+                        setRunningRequests(
+                          runningRequests.filter(
+                            (runningRequest) =>
+                              runningRequest !== record.id + junior.token_id
+                          )
                         );
                       }
-                    } finally {
-                      setRunningRequests(
-                        runningRequests.filter(
-                          (runningRequest) =>
-                            runningRequest !== record.id + junior.token_id
-                        )
-                      );
-                    }
-                  }}
-                >
-                  {runningRequests.includes(record.id + junior.token_id)
-                    ? ""
-                    : `Send ${junior.id}`}
-                </Button>
-              ))}
+                    }}
+                  >
+                    {runningRequests.includes(record.id + junior.token_id)
+                      ? ""
+                      : `Send ${junior.id}`}
+                  </Button>
+                );
+              })}
             </div>
           );
         }
@@ -307,10 +343,15 @@ const Admin = () => {
     };
 
     if (typeof pendingRequest.juniors !== "undefined") {
-      if (pendingRequest.fulfulled) {
+      if (pendingRequest.fulfilled) {
         state = {
           color: "green",
           text: "Done",
+        };
+      } else if (typeof pendingRequest.finished !== "undefined") {
+        state = {
+          color: "blue",
+          text: "Partly finished",
         };
       } else {
         state = {
@@ -326,6 +367,7 @@ const Admin = () => {
       wallet: pendingRequest.wallet,
       parents: pendingRequest.parents,
       state: state,
+      finished: pendingRequest.finished,
       juniors:
         pendingRequest.juniors || Math.floor(pendingRequest.parents.length / 2),
     });
@@ -339,6 +381,12 @@ const Admin = () => {
           pendingRequests.length > 0 ? { display: "flex" } : { display: "none" }
         }
       >
+        <Breadcrumb>
+          <Breadcrumb.Item href="/">
+            <HomeOutlined /> Home
+          </Breadcrumb.Item>
+          <Breadcrumb.Item>Claim</Breadcrumb.Item>
+        </Breadcrumb>
         <h1>Your request overview</h1>
         <Table dataSource={dataSource} columns={columns} />
       </div>

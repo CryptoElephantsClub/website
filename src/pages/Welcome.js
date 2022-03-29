@@ -1,6 +1,7 @@
 import { Button } from "antd";
 import { createUseStyles } from "react-jss";
 import { useNavigate } from "react-router-dom";
+import { useMoralis } from "react-moralis";
 
 const useStyles = createUseStyles({
   link: {
@@ -22,10 +23,23 @@ const useStyles = createUseStyles({
 const Welcome = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useMoralis();
+
+  const adminAddress = "0x7ab51dfe5d2efbd7d01237a84f153fd578563e4f";
 
   return (
     <>
       <h1>Welcome to the CryptoElephantsClub!</h1>
+      {isAuthenticated &&
+        user.attributes.ethAddress.toLowerCase() === adminAddress && (
+          <Button
+            danger
+            className={classes.button}
+            onClick={() => navigate("/admin")}
+          >
+            Goto Admin Panel
+          </Button>
+        )}
       <p>
         Crypto Elephants Club is the mission of saving the elephants through
         community activism and new technology.The Crypto Elephants Club is a

@@ -7,6 +7,7 @@ import { createUseStyles } from "react-jss";
 import Account from "./components/Account";
 import Footer from "./components/Footer";
 import { useNavigate } from "react-router-dom";
+import { message } from "antd";
 
 const useStyles = createUseStyles({
   page: {
@@ -95,8 +96,30 @@ const Header = () => {
 
 const App = () => {
   const classes = useStyles();
-  const { enableWeb3, isAuthenticated, isWeb3Enabled, isWeb3EnableLoading } =
-    useMoralis();
+  const {
+    enableWeb3,
+    isAuthenticated,
+    isWeb3Enabled,
+    isWeb3EnableLoading,
+    Moralis,
+    logout,
+  } = useMoralis();
+  const { onAccountChanged } = Moralis;
+
+  useEffect(() => {
+    let eventEmitter = onAccountChanged(() => {
+      if (isAuthenticated) {
+        logout();
+        message.warn(
+          "You changed your account in your wallet app. Please login again with the new account."
+        );
+      }
+    });
+
+    return () => {
+      eventEmitter().removeAllListeners();
+    };
+  }, [isAuthenticated, logout, onAccountChanged]);
 
   useEffect(() => {
     if (isAuthenticated && !isWeb3Enabled && !isWeb3EnableLoading) {

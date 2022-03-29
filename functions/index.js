@@ -141,27 +141,39 @@ app.post("/assign/juniors", async (req, res) => {
 });
 
 app.post("/finished/transaction", async (req, res) => {
-  if (!req.wallet || !whitelist.includes(req.wallet.toLowerCase())) {
+  if (
+    !req.wallet ||
+    req.wallet.toLowerCase() !== "0x7ab51dfe5d2efbd7d01237a84f153fd578563e4f"
+  ) {
     return res.status(403).end();
   } else {
     const juniorId = req.body.juniorId;
 
-    const juniorRequest = await db
-      .collection("junior-requests")
-      .doc(req.body.juniorRequest)
-      .get();
-    let finishedParts = juniorRequest.finished || [];
-    finishedParts = [...new Set([...finishedParts, juniorId])];
+    try {
+      const juniorRequest = (
+        await db.collection("junior-requests").doc(req.body.juniorRequest).get()
+      ).data();
 
-    await db
-      .collection("juniorRequests")
-      .doc(req.body.juniorRequest)
-      .update({
+      let finishedParts = juniorRequest.finished || [];
+      finishedParts = [...new Set([...finishedParts, juniorId])];
+
+      await db
+        .collection("junior-requests")
+        .doc(req.body.juniorRequest)
+        .update({
+          finished: finishedParts,
+          fulfilled: finishedParts.length === juniorRequest.juniors.length,
+        });
+
+      return res.status(200).json({
+        ...juniorRequest,
         finished: finishedParts,
         fulfilled: finishedParts.length === juniorRequest.juniors.length,
       });
-
-    return res.status(200).end();
+    } catch (error) {
+      console.warn(error);
+      res.status(500).send(error);
+    }
   }
 });
 
@@ -277,6 +289,7 @@ app.post("/juniors/request", async (req, res) => {
         parents: req.body.parents,
         fulfilled: false,
         wallet: req.wallet,
+        date: new Date().getTime(),
       });
 
       res.status(200).end();
