@@ -1,7 +1,9 @@
-import { Button } from "antd";
+import { Button, Card, Statistic } from "antd";
 import { createUseStyles } from "react-jss";
 import { useNavigate } from "react-router-dom";
 import { useMoralis } from "react-moralis";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 const useStyles = createUseStyles({
   link: {
@@ -24,6 +26,17 @@ const Welcome = () => {
   const classes = useStyles();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useMoralis();
+  const [juniors, setJuniors] = useState(0);
+
+  useEffect(() => {
+    axios
+      .get(
+        "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/used/parents"
+      )
+      .then((response) => {
+        setJuniors(response.data.length / 2);
+      });
+  }, []);
 
   const adminAddress = "0x7ab51dfe5d2efbd7d01237a84f153fd578563e4f";
 
@@ -79,6 +92,11 @@ const Welcome = () => {
       >
         Claim your Junior(s) now
       </Button>
+      {juniors > 0 && (
+        <Card style={{ maxWidth: 300, alignSelf: "center" }}>
+          <Statistic title="Successfully delivered juniors" value={juniors} />
+        </Card>
+      )}
     </>
   );
 };

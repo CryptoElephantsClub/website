@@ -32,7 +32,7 @@ const Admin = () => {
   const classes = useStyles();
 
   const updatePendingRequests = useCallback((requests) => {
-    requests.sort((a, b) => new Date(a.date) - new Date(b.date));
+    requests.sort((a, b) => new Date(b.date) - new Date(a.date));
     setPendingRequests(requests);
   }, []);
 
