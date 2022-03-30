@@ -1,104 +1,105 @@
+import { useState } from "react";
+import { Alert, Breadcrumb, Input, Button, message } from "antd";
 import { createUseStyles } from "react-jss";
-import Account from "../components/Account";
-import Footer from "../components/Footer";
-import { useNavigate } from "react-router-dom";
+import { HomeOutlined } from "@ant-design/icons";
+import axios from "axios";
 
 const useStyles = createUseStyles({
+  check: {
+    maxWidth: 300,
+  },
   page: {
-    minHeight: "100vh",
     display: "flex",
     flexDirection: "column",
-  },
-  cover: {
-    width: "100%",
-    height: 300,
-    objectFit: "cover",
-    backgroundColor: "white",
-  },
-  content: {
-    display: "flex",
-    flexDirection: "column",
-    flexGrow: 1,
-    paddingTop: "2vh",
-    paddingBottom: "5vh",
-    width: "95%",
-    textAlign: "center",
-    alignSelf: "center",
-    "@media screen and (min-width: 800px)": {
-      width: "80%",
-    },
-    "@media screen and (min-width: 576px)": {
-      paddingTop: "4vh",
-      paddingBottom: "2vh",
-    },
-  },
-  header: {
-    background: "rgba(255, 255, 255, 0.95)",
-    display: "flex",
-    padding: 12,
-    height: 64,
-    boxShadow: "rgb(4 17 29 / 25%) 0px 0px 8px 0px",
     alignItems: "center",
+    marginBottom: 24,
   },
-  logo: {
+  input: {
+    marginTop: 12,
+    marginBottom: 24,
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    "& > div": {
-      width: 32,
-      height: 32,
-      background: "url(./logo.png)",
-      cursor: "pointer",
-      backgroundSize: "cover",
-      borderRadius: "50%",
-    },
-    "& > span": {
-      color: "#12284b",
-      fontWeight: "bolder",
-      marginLeft: 4,
-      marginTop: 4,
-    },
-  },
-  space: {
-    flexGrow: 1,
-  },
-  link: {
-    color: "#508960",
-    cursor: "pointer",
-    transition: "color 0.3s",
-    "&:hover": {
-      color: "#62b871",
-    },
   },
 });
 
 const Juniors = () => {
   const classes = useStyles();
-  const navigate = useNavigate();
+  const [elephantId, setElephantId] = useState("");
+  const [lastCheckedId, setLastCheckedId] = useState("");
+  const [isUsed, setIsUsed] = useState();
+
+  let type = "warning";
+  let title = "Attention";
+  let description =
+    "You need 2 adult elephants to request a junior and the adult elephants can only have one child. If you plan to buy an adult elephant at OpenSea to use it for a request, you need to check first if the elephant was already used. The elephant ID is the NFT name displayed at OpenSea (# + Number between 1-5000)";
+
+  if (typeof isUsed !== "undefined") {
+    if (isUsed) {
+      type = "error";
+      title = `Elephant #${lastCheckedId} already used`;
+      description =
+        "You can not use this elephant to request a junior. The elephant is already a parent.";
+    } else {
+      type = "success";
+      title = `Elephant #${lastCheckedId} ready to use`;
+      description = "You can use this elephant to request a junior!";
+    }
+  }
+
+  const checkParent = async () => {
+    if (elephantId === "") {
+      return;
+    }
+
+    const intId = Number(elephantId);
+
+    if (!Number.isInteger(intId) || intId < 0 || intId > 5000) {
+      message.info(
+        "The elephant Id is a number between 0 and 5000. You also see it as NFT name at OpenSea."
+      );
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        "https://us-central1-cryptoelephantsclub.cloudfunctions.net/api/check/parent/" +
+          elephantId
+      );
+      setIsUsed(response.data);
+      setLastCheckedId(intId);
+    } catch (error) {
+      console.warn(error);
+      message.warn(
+        "The cryptoelephants backend is currently not available. Please try again later."
+      );
+    }
+  };
 
   return (
     <div className={classes.page}>
-      <div className={classes.header}>
-        <div onClick={() => navigate("/")} className={classes.logo}>
-          <div />
-          <span>CryptoElephantsClub</span>
-        </div>
-        <div className={classes.space} />
-        <Account />
+      <Breadcrumb>
+        <Breadcrumb.Item href="/">
+          <HomeOutlined /> Home
+        </Breadcrumb.Item>
+        <Breadcrumb.Item>Claim</Breadcrumb.Item>
+      </Breadcrumb>
+      <h1>Juniors</h1>
+
+      <div className={classes.input}>
+        <Input
+          onPressEnter={checkParent}
+          className={classes.check}
+          value={elephantId}
+          onChange={(event) => setElephantId(event.currentTarget.value)}
+          prefix="#"
+          placeholder="Elephant ID"
+        />
+        <Button onClick={checkParent} type="primary">
+          Check elephant
+        </Button>
       </div>
 
-      <img
-        className={classes.cover}
-        src="cover.png"
-        alt="A cover full of elephants"
-      />
-      <div className={classes.content}>
-        <h1>Coming Soon!</h1>
-        <span className={classes.link} onClick={() => navigate("/")}>
-          Come back later 🚀
-        </span>
-      </div>
-      <Footer />
+      <Alert message={title} description={description} type={type} showIcon />
     </div>
   );
 };
