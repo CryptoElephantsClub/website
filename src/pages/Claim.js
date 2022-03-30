@@ -238,16 +238,29 @@ const Claim = () => {
       title: "Juniors",
       dataIndex: "juniors",
       key: "juniors",
+      render: (juniors) => {
+        if (typeof juniors === "number") {
+          return juniors;
+        } else {
+          return juniors.map((junior) => (
+            <Tag key={`junior-${junior.id}`} color="green">
+              {junior.id}
+            </Tag>
+          ));
+        }
+      },
     },
     {
       title: "State",
       dataIndex: "state",
       key: "state",
-      render: (done) => {
-        if (done) {
-          return <Tag color="green">Done</Tag>;
-        } else {
-          return <Tag color="yellow">Pending</Tag>;
+      render: (state, record) => {
+        if (state) {
+          return (
+            <Tag key={`state-${record.id}`} color={state.color}>
+              {state.text}
+            </Tag>
+          );
         }
       },
     },
@@ -256,12 +269,37 @@ const Claim = () => {
   const dataSource = [];
 
   for (let pendingRequest of pendingRequests) {
+    let state = {
+      color: "yellow",
+      text: "Pending",
+    };
+
+    if (typeof pendingRequest.juniors !== "undefined") {
+      if (pendingRequest.fulfilled) {
+        state = {
+          color: "green",
+          text: "Done",
+        };
+      } else if (typeof pendingRequest.finished !== "undefined") {
+        state = {
+          color: "blue",
+          text: "Partly finished",
+        };
+      } else {
+        state = {
+          color: "blue",
+          text: "In Progress",
+        };
+      }
+    }
+
     dataSource.push({
       key: dataSource.length,
       wallet: pendingRequest.wallet,
       parents: pendingRequest.parents,
-      state: pendingRequest.fulfulled,
-      juniors: Math.floor(pendingRequest.parents.length / 2),
+      state: state,
+      juniors:
+        pendingRequest.juniors || Math.floor(pendingRequest.parents.length / 2),
     });
   }
 

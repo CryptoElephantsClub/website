@@ -150,9 +150,12 @@ app.post("/finished/transaction", async (req, res) => {
     const juniorId = req.body.juniorId;
 
     try {
-      const juniorRequest = (
-        await db.collection("junior-requests").doc(req.body.juniorRequest).get()
-      ).data();
+      const juniorRequestDoc = await db
+        .collection("junior-requests")
+        .doc(req.body.juniorRequest)
+        .get();
+
+      const juniorRequest = juniorRequestDoc.data();
 
       let finishedParts = juniorRequest.finished || [];
       finishedParts = [...new Set([...finishedParts, juniorId])];
@@ -167,6 +170,7 @@ app.post("/finished/transaction", async (req, res) => {
 
       return res.status(200).json({
         ...juniorRequest,
+        id: juniorRequestDoc.id,
         finished: finishedParts,
         fulfilled: finishedParts.length === juniorRequest.juniors.length,
       });
